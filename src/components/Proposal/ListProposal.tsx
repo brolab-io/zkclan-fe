@@ -126,9 +126,9 @@ const ListProposal: React.FC<Props> = ({ clanId }) => {
     <>
       {(data || []).map((item) => (
         <Link
-          href={`/proposal/${item.pollId}`}
+          href={`/dao/${clanId}/proposal/${item.pollId}`}
           key={item.pollId.toString()}
-          className="flex justify-between items-center border-b border-b-[#2D3748] py-6"
+          className="flex justify-between items-center border-b border-b-[#2D3748] py-6 hover:bg-[#2D3748] transition-colors px-10"
         >
           <div className="space-y-2.5">
             <h3 className="font-medium text-white">{item.title}</h3>
