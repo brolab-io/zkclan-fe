@@ -2,6 +2,7 @@
 import { EthereumClient, w3mConnectors, w3mProvider } from "@web3modal/ethereum";
 import { Web3Modal } from "@web3modal/react";
 import { PropsWithChildren } from "react";
+import { ToastContainer } from "react-toastify";
 import { configureChains, createClient, WagmiConfig } from "wagmi";
 import { polygonMumbai, evmosTestnet } from "wagmi/chains";
 
@@ -21,6 +22,7 @@ const Provider: React.FC<PropsWithChildren> = ({ children }) => {
     <>
       <WagmiConfig client={wagmiClient}>{children}</WagmiConfig>
       <Web3Modal projectId={projectId} ethereumClient={ethereumClient} />
+      <ToastContainer />
     </>
   );
 };

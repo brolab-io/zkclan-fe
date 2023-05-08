@@ -1,7 +1,10 @@
 import "./globals.css";
+import "react-toastify/dist/ReactToastify.css";
 import Provider from "@/providers";
 import { Inter } from "next/font/google";
 import Navbar from "@/components/CommonUI/Navbar";
+import WrongNetworkModal from "@/components/CommonUI/WrongNetwork";
+import AgeCheck from "@/components/DAO/AgeCheck";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,6 +20,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Provider>
           <Navbar />
           <main className="pt-[100px]">{children}</main>
+          <WrongNetworkModal />
+          <AgeCheck />
         </Provider>
       </body>
     </html>
