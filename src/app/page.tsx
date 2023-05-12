@@ -1,4 +1,5 @@
 "use client";
+import ClanList from "@/components/Clans/ClanList";
 import Button from "@/components/CommonUI/Button";
 import Container from "@/components/CommonUI/Container";
 import { useRouter } from "next/navigation";
@@ -16,6 +17,7 @@ export default function Home() {
         <h1 className="text-white font-bold text-[36px]">Explore</h1>
         <Button onClick={handleCreateClan}>Create Clan</Button>
       </div>
+      <ClanList />
     </Container>
   );
 }

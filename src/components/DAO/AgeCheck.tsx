@@ -5,8 +5,11 @@ import { formatAddress } from "@/utils/string";
 import { generateBroadcastParams } from "@/utils/zk/zk-witness";
 import { useAccount, useChainId, useContractRead, useContractWrite } from "wagmi";
 import Button from "../CommonUI/Button";
+import useClient from "@/hooks/useClient";
+import { getContractAddress } from "@/configs/contract";
 
 const AgeCheck = () => {
+  const isClient = useClient();
   const [age, setAge] = React.useState<number>(19);
   const [error, setError] = React.useState<string | undefined>();
   const [statusMsg, setStatusMsg] = React.useState<string | undefined>();
@@ -21,21 +24,21 @@ const AgeCheck = () => {
   const { writeAsync: verifyUsingGroth } = useContractWrite({
     abi: ["function verifyUsingGroth(uint256[8] _proof, uint256[2] _input)"],
     functionName: "verifyUsingGroth",
-    address: "0x083c6b80633C984C54aAE7ae2F123A995fF6B468",
+    address: getContractAddress(chainId, "ageCheck"),
     mode: "recklesslyUnprepared",
   });
 
   const { writeAsync: setVerficationStatus } = useContractWrite({
     abi: ["function setVerficationStatus(bool _status)"],
     functionName: "setVerficationStatus",
-    address: "0x083c6b80633C984C54aAE7ae2F123A995fF6B468",
+    address: getContractAddress(chainId, "ageCheck"),
     mode: "recklesslyUnprepared",
   });
 
   const { data: ageVerified } = useContractRead({
     abi: ["function getVerficationStatus(address _user) public view returns (bool)"],
     functionName: "getVerficationStatus",
-    address: "0x083c6b80633C984C54aAE7ae2F123A995fF6B468",
+    address: getContractAddress(chainId, "ageCheck"),
     args: [account],
     enabled: !!account,
   });
@@ -141,6 +144,10 @@ const AgeCheck = () => {
       </div>
     );
   });
+
+  if (!isClient) {
+    return null;
+  }
   return (
     <div>
       <div className="flex justify-center">
