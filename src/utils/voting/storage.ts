@@ -31,7 +31,9 @@ const retrieveZkId = (accountKey: string, chainId: number): string | undefined =
 
 const hasZkId = (accountKey: string, chainId: number): boolean => {
   const key = `${keyNew}_${chainId}_${accountKey.substring(0, 5)}`;
+
   const d = localStorage?.getItem(key);
+  console.log("hasZkId", key, d, d != null && d.length > 0);
   return d != null && d.length > 0;
 };
 

@@ -1,10 +1,16 @@
 "use client";
+import { getContractAddress } from "@/configs/contract";
 import useClient from "@/hooks/useClient";
-import { Poll } from "@/types/Poll";
+import { Poll, TProposal } from "@/types/Poll";
 import { formatDateTime } from "@/utils/date";
 import clsx from "clsx";
 import Link from "next/link";
-import { useContractRead } from "wagmi";
+import { useMemo } from "react";
+import { useAccount, useChainId, useContractRead, useContractWrite } from "wagmi";
+import Loading from "../CommonUI/Loading";
+import Button from "../CommonUI/Button";
+import { toast } from "react-toastify";
+import { getTxErrorMessage } from "@/utils/string";
 
 type ProposalStatusProps = {
   status: number;
@@ -22,6 +28,7 @@ const ProposalState: React.FC<ProposalStatusProps> = ({ status, className, withI
             height="20"
             viewBox="0 0 20 20"
             fill="none"
+            className="inline-block mr-3 -mt-1 fill-transparent"
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
@@ -46,6 +53,7 @@ const ProposalState: React.FC<ProposalStatusProps> = ({ status, className, withI
             height="20"
             viewBox="0 0 20 20"
             fill="none"
+            className="inline-block mr-3 -mt-1 fill-transparent"
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
@@ -70,6 +78,7 @@ const ProposalState: React.FC<ProposalStatusProps> = ({ status, className, withI
             height="20"
             viewBox="0 0 20 20"
             fill="none"
+            className="inline-block mr-3 -mt-1 fill-transparent"
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
@@ -111,47 +120,133 @@ const ProposalState: React.FC<ProposalStatusProps> = ({ status, className, withI
 
 type Props = {
   clanId: string;
+  proposals: TProposal[] | undefined;
+  isLoading?: boolean;
 };
-const ListProposal: React.FC<Props> = ({ clanId }) => {
-  const { data } = useContractRead<any, any, Poll[]>({
+const ListProposal: React.FC<Props> = ({ clanId, proposals, isLoading }) => {
+  const chainId = useChainId();
+  const { data: onChainData } = useContractRead<any, any, Poll[]>({
     abi: [
       "function getAllPolls() view returns (tuple(uint256 pollId, uint8 pollStatus, string title, address creator, uint256 quorum, uint256[] votes, uint256 createdAt)[])",
     ],
-    address: "0xb1b24576a8f7719E953A7273Dd1a0105735E707d",
+    address: getContractAddress(chainId, "voting"),
     functionName: "getAllPolls",
   });
   const isClient = useClient();
+
   if (!isClient) return null;
+
+  if (!proposals) return null;
+
+  if (!proposals.length) {
+    return (
+      <div className="flex justify-center items-center h-[120px]">
+        {isLoading ? (
+          <Loading className="w-5 h-5"></Loading>
+        ) : (
+          <div className="text-slate-300">No proposals yet</div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
-      {(data || []).map((item) => (
-        <Link
-          href={`/dao/${clanId}/proposal/${item.pollId}`}
-          key={item.pollId.toString()}
-          className="flex justify-between items-center border-b border-b-[#2D3748] py-6 hover:bg-[#2D3748] transition-colors px-10"
-        >
-          <div className="space-y-2.5">
-            <h3 className="font-medium text-white">{item.title}</h3>
-            <div className="flex items-center gap-4">
-              <ProposalState
-                className="px-5 py-1 text-sm border rounded-lg"
-                status={item.pollStatus}
-              />
-              <div className="bg-[#4A5568] rounded-lg py-1 px-3.5 font-bold text-[14px] text-white">
-                {item.votes.length.toString().padStart(3, "0")}
-              </div>
-              <div className="h-5 w-px bg-[#4A5568]"></div>
-              <div className="text-[#718096] font-medium">{formatDateTime(item.createdAt)}</div>
-            </div>
-          </div>
-          <ProposalState
-            withIcon
-            className="px-5 py-1 font-medium text-md"
-            status={item.pollStatus}
-          />
-        </Link>
+      {(proposals || []).map((item) => (
+        <ListProposalItem item={item} clanId={clanId} key={item.id.toString()} />
       ))}
     </>
+  );
+};
+
+const ListProposalItem: React.FC<{ item: TProposal; clanId: string }> = ({ item, clanId }) => {
+  const chainId = useChainId();
+  const { address } = useAccount();
+  const {
+    data: onChainData,
+    isLoading,
+    refetch,
+  } = useContractRead<any, any, Poll>({
+    abi: [
+      "function getPollDetailsById(uint256 _pollId) view returns (tuple(uint256 pollId, uint8 pollStatus, string title, address creator, uint256 quorum, uint256[] votes, uint256 createdAt))",
+    ],
+    address: getContractAddress(chainId, "voting"),
+    functionName: "getPollDetailsById",
+    args: [item.id],
+  });
+
+  const { writeAsync, isLoading: isStarting } = useContractWrite({
+    abi: ["function startPoll(uint256 _pollId)"],
+    address: getContractAddress(chainId, "voting"),
+    functionName: "startPoll",
+    args: [item.id],
+    mode: "recklesslyUnprepared",
+  });
+
+  const pollStatus = onChainData?.pollStatus || 0;
+  const isCreator = onChainData?.creator.toLowerCase() === address?.toLowerCase();
+  // const isCreator = true;
+  console.log(onChainData?.creator.toLowerCase(), address?.toLowerCase());
+
+  console.log("onChainData", onChainData);
+
+  const startPoll = async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    const toastId = toast.loading("Starting poll...");
+    try {
+      e.preventDefault();
+      e.stopPropagation();
+      const tx = await writeAsync();
+      toast.update(toastId, {
+        render: "Transaction submitted, waiting for confirmation...",
+      });
+      await tx.wait();
+      toast.update(toastId, {
+        render: "Poll started",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+      return refetch();
+    } catch (e) {
+      toast.update(toastId, {
+        render: getTxErrorMessage(e),
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
+    }
+  };
+  return (
+    <Link
+      href={`/dao/${clanId}/proposal/${item.id}`}
+      key={item.id.toString()}
+      className="flex justify-between items-center border-b border-b-[#2D3748] py-6 hover:bg-[#2D3748] transition-colors px-10"
+    >
+      <div className="space-y-2.5">
+        <h3 className="font-medium text-white">{item.title}</h3>
+        <div className="flex items-center gap-4">
+          <ProposalState className="px-5 py-1 text-sm border rounded-lg" status={pollStatus} />
+          <div className="bg-[#4A5568] rounded-lg py-1 px-3.5 font-bold text-[14px] text-white">
+            {(item.voteFors.length + item.voteAgainsts.length).toString().padStart(3, "0")}
+          </div>
+          <div className="h-5 w-px bg-[#4A5568]"></div>
+          <div className="text-[#718096] font-medium">{formatDateTime(item.startDate)}</div>
+        </div>
+      </div>
+      {!isLoading ? (
+        pollStatus === 0 && isCreator ? (
+          <Button
+            isLoading={isLoading || isStarting}
+            onClick={startPoll}
+            className="!py-2.5 rounded-lg"
+          >
+            Start
+          </Button>
+        ) : (
+          <ProposalState withIcon className="px-5 py-1 font-medium text-md" status={pollStatus} />
+        )
+      ) : null}
+    </Link>
   );
 };
 

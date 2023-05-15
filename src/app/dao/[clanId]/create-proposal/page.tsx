@@ -1,25 +1,87 @@
 "use client";
 import Button from "@/components/CommonUI/Button";
 import Container from "@/components/CommonUI/Container";
+import { getContractAddress } from "@/configs/contract";
+import addProposal from "@/services/clans/addProposal";
+import { getTxErrorMessage } from "@/utils/string";
+import { getCommitment } from "@/utils/voting/helpers";
+import { BigNumber, ethers } from "ethers";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useContractWrite } from "wagmi";
+import { toast } from "react-toastify";
+import { useAccount, useChainId, useContractWrite } from "wagmi";
 
-export default function CreateProposalPage() {
+type PageProps = {
+  params: {
+    clanId: string;
+  };
+};
+
+export default function CreateProposalPage({ params: { clanId } }: PageProps) {
+  const chainId = useChainId();
   const [title, setTitle] = useState<string>("");
   const [votingPeriod, setVotingPeriod] = useState<[Date, Date]>([new Date(), new Date()]); // [start, end]
   const [description, setDescription] = useState<string>("");
-  const { writeAsync } = useContractWrite({
+  const { writeAsync, isLoading } = useContractWrite({
     mode: "recklesslyUnprepared",
     abi: ["function createPoll(uint256, string, uint256)"],
     functionName: "createPoll",
-    address: "0xb1b24576a8f7719E953A7273Dd1a0105735E707d",
+    address: getContractAddress(chainId, "voting"),
   });
+  const { address } = useAccount();
+  const router = useRouter();
 
-  const handleCreateProposal = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCreateProposal = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    writeAsync({
-      recklesslySetUnpreparedArgs: ["1", title, "1"],
-    });
+
+    if (!address) {
+      return toast.error("Please connect your wallet");
+    }
+    const toastId = toast.loading("Generating commitment...", { autoClose: false });
+    try {
+      const commitment = await getCommitment(address, chainId);
+      if (!commitment) {
+        return toast.update(toastId, {
+          render: "Please connect your wallet",
+          type: "error",
+          autoClose: 3000,
+          isLoading: false,
+        });
+      }
+      toast.update(toastId, { render: "Submitting proposal..." });
+      const tx = await writeAsync({
+        recklesslySetUnpreparedArgs: [commitment, title, BigNumber.from(100)],
+      });
+      toast.update(toastId, { render: "Transaction submitted, waiting for confirmation..." });
+      const txReceipt = await tx.wait();
+      const log = txReceipt.logs[0];
+      const { topics } = log;
+      const pollId = Number(ethers.utils.hexStripZeros(topics[1])).toString();
+      await addProposal({
+        id: pollId,
+        title,
+        description,
+        startDate: votingPeriod[0],
+        endDate: votingPeriod[1],
+        clanId: clanId,
+      });
+      toast.update(toastId, {
+        render: "Proposal submitted successfully",
+        type: "success",
+        autoClose: 3000,
+        isLoading: false,
+      });
+      console.log(txReceipt);
+      router.push(`/dao/${clanId}`);
+    } catch (e) {
+      console.log(e);
+      toast.update(toastId, {
+        render: getTxErrorMessage(e),
+        type: "error",
+        autoClose: 3000,
+        isLoading: false,
+      });
+    }
   };
 
   return (
@@ -76,7 +138,7 @@ export default function CreateProposalPage() {
         </div>
         <div className="flex items-center justify-between w-full mt-6">
           <div />
-          <Button type="submit" className="rounded-md">
+          <Button isLoading={isLoading} type="submit" className="rounded-md">
             Publish{" "}
             <svg
               width="19"

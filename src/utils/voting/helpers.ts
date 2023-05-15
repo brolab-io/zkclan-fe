@@ -10,8 +10,11 @@ export const posiedonHash = async (values: any[]): Promise<string> => {
 };
 
 export const getIdFromStore = (account: string, chainId: number) => {
+  console.log("getIdFromStore", account, chainId);
+  console.log("hasZkId", hasZkId(account, chainId));
   if (chainId == null || !hasZkId(account, chainId)) {
-    return;
+    console.log("getIdFromStore: no zkId");
+    return null;
   }
 
   const serializedIdentity = retrieveZkId(account, chainId);
@@ -31,6 +34,7 @@ export const getCommitment = async (
 
   const { identityNullifier, identityTrapdoor } = identity.getIdentity();
   const hash = await posiedonHash([BigInt(identityTrapdoor), BigInt(identityNullifier)]);
+  console.log("getCommitment", hash);
   return hash;
 };
 

@@ -1,10 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
+import useCreateClan from "@/hooks/useCreateClan";
 import Button from "@/components/CommonUI/Button";
 import Container from "@/components/CommonUI/Container";
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
-import { useContractWrite } from "wagmi";
+import { toast } from "react-toastify";
 
 const CreateClanPage = () => {
   const inputFileRef = useRef<HTMLInputElement>(null);
@@ -19,17 +20,20 @@ const CreateClanPage = () => {
   const setApplicationStatusTrue = () => setApplicationStatus(true);
   const setApplicationStatusFalse = () => setApplicationStatus(false);
 
-  const { writeAsync } = useContractWrite({
-    mode: "recklesslyUnprepared",
-    abi: ["function regsiterCommitment(uint256)"],
-    functionName: "regsiterCommitment",
-    address: "0xb1b24576a8f7719E953A7273Dd1a0105735E707d",
-  });
+  const { mutateAsync: createClan, isLoading } = useCreateClan();
 
   const handleCreateClan = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    writeAsync({
-      recklesslySetUnpreparedArgs: [1],
+    if (!file) {
+      toast.error("Please select a file");
+      return;
+    }
+    return createClan({
+      name,
+      email,
+      description,
+      file,
+      applicationStatus,
     });
   };
   const handleClickSelectFile = () => {
@@ -129,6 +133,7 @@ const CreateClanPage = () => {
             placeholder="Enter a unique clan name here"
             className="w-full bg-[#FFFFFF] bg-opacity-[3%] text-white placeholder:text-[#808080] rounded-[10px] p-6 mt-2"
             required
+            disabled={isLoading}
           />
         </div>
         <div className="mt-[26px]">
@@ -143,6 +148,7 @@ const CreateClanPage = () => {
             placeholder="Enter email for communication here"
             className="w-full bg-[#FFFFFF] bg-opacity-[3%] text-white placeholder:text-[#808080] rounded-[10px] p-6 mt-2"
             required
+            disabled={isLoading}
           />
         </div>
         <div className="mt-[26px]">
@@ -219,11 +225,12 @@ const CreateClanPage = () => {
             placeholder="What’s your clan all about and who is it for"
             className="w-full bg-[#FFFFFF] bg-opacity-[3%] text-white placeholder:text-[#808080] rounded-[10px] p-6 mt-2"
             required
+            disabled={isLoading}
           />
         </div>
         <div className="flex items-center justify-between w-full mt-6">
           <div />
-          <Button type="submit" className="rounded-md">
+          <Button isLoading={isLoading} type="submit" className="rounded-md">
             Create Clan{" "}
             <svg
               width="19"

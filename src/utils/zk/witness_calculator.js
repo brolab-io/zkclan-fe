@@ -158,6 +158,7 @@ class WitnessCalculator {
   async calculateWTNSBin(input, sanityCheck) {
     const buff32 = new Uint32Array(this.witnessSize * this.n32 + this.n32 + 11);
     const buff = new Uint8Array(buff32.buffer);
+
     await this._doCalculateWitness(input, sanityCheck);
 
     //"wtns"

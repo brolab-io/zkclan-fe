@@ -35,6 +35,7 @@ export const generateMerkleProof = async (
     poseidonHash(poseidon)
   );
   const stringLeaves = leaves.map((l) => ethers.BigNumber.from(l).toString());
+  console.log("generateMerkleProof", stringLeaves, leaf.toString());
   const leafIndex = stringLeaves.indexOf(leaf.toString());
   if (leafIndex === -1) throw new Error("Leaf does not exists");
 
