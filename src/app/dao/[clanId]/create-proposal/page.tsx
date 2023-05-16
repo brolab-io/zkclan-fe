@@ -1,13 +1,16 @@
 "use client";
+import Breadcrumb from "@/components/CommonUI/Breadcrumb";
 import Button from "@/components/CommonUI/Button";
 import Container from "@/components/CommonUI/Container";
 import { getContractAddress } from "@/configs/contract";
+import useClan from "@/hooks/useClan";
+import { useCommitmentContext } from "@/providers/CommitmentProvider";
 import addProposal from "@/services/clans/addProposal";
 import { getTxErrorMessage } from "@/utils/string";
 import { getCommitment } from "@/utils/voting/helpers";
 import { BigNumber, ethers } from "ethers";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { useAccount, useChainId, useContractWrite } from "wagmi";
 
@@ -16,6 +19,13 @@ type PageProps = {
     clanId: string;
   };
 };
+
+const breadcrumbItems = [
+  {
+    label: "DAO",
+    href: "/",
+  },
+];
 
 export default function CreateProposalPage({ params: { clanId } }: PageProps) {
   const chainId = useChainId();
@@ -28,12 +38,16 @@ export default function CreateProposalPage({ params: { clanId } }: PageProps) {
     functionName: "createPoll",
     address: getContractAddress(chainId, "voting"),
   });
+  const { data: clan } = useClan(clanId);
   const { address } = useAccount();
   const router = useRouter();
+  const { open, isRegistered } = useCommitmentContext();
 
   const handleCreateProposal = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
+    if (!isRegistered) {
+      return open();
+    }
     if (!address) {
       return toast.error("Please connect your wallet");
     }
@@ -42,7 +56,7 @@ export default function CreateProposalPage({ params: { clanId } }: PageProps) {
       const commitment = await getCommitment(address, chainId);
       if (!commitment) {
         return toast.update(toastId, {
-          render: "Please connect your wallet",
+          render: "Before creating a proposal, you need to register commitment",
           type: "error",
           autoClose: 3000,
           isLoading: false,
@@ -84,9 +98,28 @@ export default function CreateProposalPage({ params: { clanId } }: PageProps) {
     }
   };
 
+  const _breadcrumbItems = useMemo(() => {
+    if (!clan) return breadcrumbItems;
+    return [
+      ...breadcrumbItems,
+      {
+        label: clan.name,
+        href: `/dao/${clanId}`,
+      },
+      {
+        label: "Create Proposal",
+        href: `/dao/${clanId}/create-proposal`,
+      },
+    ];
+  }, [clan, clanId]);
+
   return (
-    <Container className="py-16 !max-w-[900px]">
-      <form onSubmit={handleCreateProposal} className="bg-[#0C121D] rounded-[16px] py-12 px-20">
+    <Container className="!max-w-[900px]">
+      <Breadcrumb items={_breadcrumbItems}></Breadcrumb>
+      <form
+        onSubmit={handleCreateProposal}
+        className="bg-[#0C121D] rounded-[16px] mb-16 mt-8 py-12 px-20"
+      >
         <h1 className="text-white text-[32px] font-bold">Create Proposal</h1>
 
         <div className="mt-[26px]">
@@ -139,7 +172,7 @@ export default function CreateProposalPage({ params: { clanId } }: PageProps) {
         <div className="flex items-center justify-between w-full mt-6">
           <div />
           <Button isLoading={isLoading} type="submit" className="rounded-md">
-            Publish{" "}
+            {isRegistered ? "Publish" : "Register commitment"}{" "}
             <svg
               width="19"
               height="19"

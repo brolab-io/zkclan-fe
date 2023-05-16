@@ -8,17 +8,17 @@ import { useCallback, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { useAccount, useChainId, useContractRead, useContractWrite } from "wagmi";
 import Button from "../CommonUI/Button";
-import useVerify from "@/hooks/useVerify";
-import useRegisterCommitment from "@/hooks/useRegisterCommitment";
 import updateProposalVote from "@/services/clans/addVote";
 import { getTxErrorMessage } from "@/utils/string";
+import { useCommitmentContext } from "@/providers/CommitmentProvider";
 const { ZkIdentity } = require("@libsem/identity");
 
 type Props = {
   proposalId: string;
+  refresh: () => void;
 };
 
-const Vote: React.FC<Props> = ({ proposalId }) => {
+const Vote: React.FC<Props> = ({ proposalId, refresh }) => {
   const chainId = useChainId();
   const { address } = useAccount();
   let votingType = useRef(0);
@@ -33,16 +33,6 @@ const Vote: React.FC<Props> = ({ proposalId }) => {
     args: [],
   });
 
-  const { mutateAsync: verifyAge, isLoading: isVerifyingAge } = useVerify();
-
-  const { data: ageVerified, isLoading: isCheckingAgeVerified } = useContractRead({
-    abi: ["function getVerficationStatus(address _user) public view returns (bool)"],
-    functionName: "getVerficationStatus",
-    address: getContractAddress(chainId, "ageCheck"),
-    args: [address],
-    enabled: !!address,
-  });
-
   const [isVoting, setIsVoting] = useState(false);
   const { writeAsync: castVote } = useContractWrite({
     abi: [
@@ -53,15 +43,7 @@ const Vote: React.FC<Props> = ({ proposalId }) => {
     mode: "recklesslyUnprepared",
   });
 
-  const {
-    isRegistered,
-    registerCommitment,
-    isLoading: isRegisteringCommitment,
-  } = useRegisterCommitment(refetchRegisteredCommitments);
-
-  const handleVerify = async () => {
-    verifyAge();
-  };
+  const { open, isRegistered } = useCommitmentContext();
 
   const vote = useCallback(
     async (userVote: 0 | 1) => {
@@ -120,6 +102,7 @@ const Vote: React.FC<Props> = ({ proposalId }) => {
           await updateProposalVote(proposalId, address, userVote);
           await tx.wait();
           toast.success("Vote casted");
+          refresh();
         }
       } catch (e) {
         toast.error(getTxErrorMessage(e));
@@ -127,13 +110,17 @@ const Vote: React.FC<Props> = ({ proposalId }) => {
         setIsVoting(false);
       }
     },
-    [address, chainId, registeredCommitments, proposalId, castVote]
+    [address, registeredCommitments, chainId, proposalId, castVote, refresh]
   );
 
   const yesVote = useCallback(() => vote(1), [vote]);
   const noVote = useCallback(() => vote(0), [vote]);
 
-  if (isCheckingAgeVerified || isFetchingRegisteredCommitments || isRegisteringCommitment) {
+  const registerCommitment = useCallback(async () => {
+    open(refetchRegisteredCommitments);
+  }, [open, refetchRegisteredCommitments]);
+
+  if (isFetchingRegisteredCommitments) {
     return (
       <Button disabled className="bg-[#1AC486] hover:bg-[#1AC486] !rounded-[16px]">
         Verifying...
@@ -143,11 +130,10 @@ const Vote: React.FC<Props> = ({ proposalId }) => {
   if (!isRegistered) {
     return (
       <Button
-        isLoading={isVerifyingAge}
         onClick={registerCommitment}
         className="bg-[#1AC486] hover:bg-[#1AC486] !rounded-[16px]"
       >
-        Verify Age
+        Register to Vote
       </Button>
     );
   }

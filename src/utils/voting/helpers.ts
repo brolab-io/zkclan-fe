@@ -34,7 +34,7 @@ export const getCommitment = async (
 
   const { identityNullifier, identityTrapdoor } = identity.getIdentity();
   const hash = await posiedonHash([BigInt(identityTrapdoor), BigInt(identityNullifier)]);
-  console.log("getCommitment", hash);
+
   return hash;
 };
 

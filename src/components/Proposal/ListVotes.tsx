@@ -9,9 +9,10 @@ type Props = {
   votes: string[];
   isVoteFor?: boolean;
   totalVotes: number;
+  proposalId: string;
 };
 
-const ListVotes: React.FC<Props> = ({ votes, isVoteFor, totalVotes }) => {
+const ListVotes: React.FC<Props> = ({ proposalId, votes, isVoteFor, totalVotes }) => {
   const style = useMemo(() => {
     let percent = 0;
     if (totalVotes > 0 && votes.length > 0) {

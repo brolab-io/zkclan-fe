@@ -17,7 +17,8 @@ const Button: React.FC<PropsWithChildren<Props>> = ({
       className={clsx(
         className,
         "rounded-full py-[14px] px-11 bg-[#5C8AED] font-semibold text-white",
-        "hover:bg-[#4C7ED6] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        "hover:bg-[#4C7ED6] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
+        "focus:ring-none focus:outline-none"
       )}
       disabled={isLoading}
       {...rest}

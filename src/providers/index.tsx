@@ -5,6 +5,7 @@ import { PropsWithChildren } from "react";
 import { ToastContainer } from "react-toastify";
 import { configureChains, createClient, WagmiConfig } from "wagmi";
 import { polygonMumbai, evmosTestnet } from "wagmi/chains";
+import CommitmentProvider from "./CommitmentProvider";
 
 const chains = [polygonMumbai, evmosTestnet];
 const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID!;
@@ -20,7 +21,9 @@ const ethereumClient = new EthereumClient(wagmiClient, chains);
 const Provider: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <>
-      <WagmiConfig client={wagmiClient}>{children}</WagmiConfig>
+      <WagmiConfig client={wagmiClient}>
+        <CommitmentProvider>{children}</CommitmentProvider>
+      </WagmiConfig>
       <Web3Modal projectId={projectId} ethereumClient={ethereumClient} />
       <ToastContainer />
     </>
